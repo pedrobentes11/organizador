@@ -1,0 +1,80 @@
+<!-- Coluna do kanban -->
+<div class="flex h-full w-80 shrink-0 flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+
+  <!-- Header da coluna -->
+  <div class="flex items-center gap-2 p-4 pb-2">
+    <!-- Indicador de cor da coluna -->
+    <div class="h-3 w-3 shrink-0 rounded-full" [style.background-color]="column.color"></div>
+
+    <!-- Título: modo visualização ou edição -->
+    @if (isEditingTitle) {
+      <input
+        type="text"
+        [(ngModel)]="editTitleValue"
+        (blur)="saveTitle()"
+        (keydown)="onTitleKeydown($event)"
+        class="flex-1 rounded-md border border-indigo-400/50 bg-transparent px-2 py-0.5 text-sm font-bold text-white outline-none focus:ring-1 focus:ring-indigo-400"
+        autofocus
+      />
+    } @else {
+      <h3
+        (dblclick)="startEditingTitle()"
+        class="flex-1 cursor-pointer truncate text-sm font-bold uppercase tracking-wider text-gray-200"
+        title="Duplo clique para editar"
+      >
+        {{ column.title }}
+      </h3>
+    }
+
+    <!-- Contador de tarefas -->
+    <span class="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-gray-400">
+      {{ column.tasks.length }}
+    </span>
+
+    <!-- Botão de deletar coluna -->
+    <button
+      (click)="onDeleteColumn()"
+      class="rounded-md p-1 text-gray-500 transition-colors hover:bg-red-500/20 hover:text-red-400"
+      title="Deletar coluna"
+    >
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Lista de tarefas com drag and drop -->
+  <div
+    cdkDropList
+    [cdkDropListData]="column.tasks"
+    [id]="column.id"
+    [cdkDropListConnectedTo]="connectedDropLists"
+    (cdkDropListDropped)="onDrop($event)"
+    class="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-2"
+    [class.min-h-[60px]]="true"
+  >
+    @for (task of column.tasks; track task.id) {
+      <div cdkDrag [cdkDragData]="task">
+        <app-task-card
+          [task]="task"
+          (delete)="onDeleteTask($event)"
+          (update)="onUpdateTask($event)"
+          (toggleCompleted)="onToggleCompleted($event)"
+          (timerTick)="onTimerTick($event)"
+        />
+      </div>
+    }
+
+    <!-- Placeholder quando não há tarefas -->
+    @if (column.tasks.length === 0) {
+      <div class="flex flex-1 items-center justify-center py-8 text-center">
+        <p class="text-xs text-gray-600">Arraste uma tarefa aqui<br/>ou crie uma nova abaixo</p>
+      </div>
+    }
+  </div>
+
+  <!-- Formulário de nova tarefa -->
+  <div class="p-3 pt-1">
+    <app-task-form (submitTask)="onTaskSubmit($event)" />
+  </div>
+</div>

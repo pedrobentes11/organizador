@@ -1,0 +1,73 @@
+<!-- Formulário de criação de tarefa -->
+<div class="rounded-xl bg-white/5 p-3 transition-all">
+  <!-- Campo título (sempre visível) -->
+  <input
+    type="text"
+    [(ngModel)]="title"
+    (focus)="expand()"
+    (keydown)="onTitleKeydown($event)"
+    placeholder="+ Adicionar tarefa..."
+    class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-500 outline-none transition-colors focus:border-indigo-400/50 focus:ring-1 focus:ring-indigo-400/30"
+  />
+
+  <!-- Campos expandidos -->
+  @if (isExpanded) {
+    <div class="mt-3 space-y-3">
+      <!-- Descrição -->
+      <textarea
+        [(ngModel)]="description"
+        placeholder="Descrição (opcional)..."
+        rows="2"
+        class="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-indigo-400/50"
+      ></textarea>
+
+      <!-- Data de vencimento -->
+      <div class="flex items-center gap-2">
+        <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <input
+          type="date"
+          [(ngModel)]="dueDate"
+          class="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none [color-scheme:dark] focus:border-indigo-400/50"
+        />
+      </div>
+
+      <!-- Seleção de tags -->
+      <div>
+        <p class="mb-1.5 text-xs font-medium text-gray-400">Tags:</p>
+        <div class="flex flex-wrap gap-1.5">
+          @for (tag of availableTags; track tag.name) {
+            <button
+              type="button"
+              (click)="toggleTag(tag)"
+              class="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider transition-all"
+              [style.background-color]="isTagSelected(tag.name) ? tag.color + '40' : tag.color + '15'"
+              [style.color]="tag.color"
+              [style.border]="isTagSelected(tag.name) ? '1px solid ' + tag.color : '1px solid transparent'"
+            >
+              {{ tag.name }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Botões de ação -->
+      <div class="flex items-center gap-2">
+        <button
+          (click)="onSubmit()"
+          [disabled]="!title.trim()"
+          class="rounded-lg bg-indigo-500 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Adicionar
+        </button>
+        <button
+          (click)="onCancel()"
+          class="rounded-lg px-3 py-1.5 text-sm text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  }
+</div>

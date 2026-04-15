@@ -1,0 +1,168 @@
+import { Component, Input, Output, EventEmitter, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Task, Tag, AVAILABLE_TAGS } from '../../models/task.model';
+
+/**
+ * Componente que representa um card de tarefa individual.
+ *
+ * Responsabilidades:
+ * - Exibir informações da tarefa (título, tags, data, timer)
+ * - Permitir edição inline do título
+ * - Controlar timer (iniciar/pausar)
+ * - Emitir eventos para ações (editar, deletar, toggle)
+ */
+@Component({
+  selector: 'app-task-card',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './task-card.component.html',
+  styleUrl: './task-card.component.scss',
+})
+export class TaskCardComponent implements OnDestroy {
+  /** Tarefa exibida neste card */
+  @Input({ required: true }) task!: Task;
+
+  /** Evento emitido quando a tarefa é deletada */
+  @Output() delete = new EventEmitter<string>();
+
+  /** Evento emitido quando a tarefa é atualizada */
+  @Output() update = new EventEmitter<{ id: string; updates: Partial<Task> }>();
+
+  /** Evento emitido quando o toggle concluído é acionado */
+  @Output() toggleCompleted = new EventEmitter<string>();
+
+  /** Evento emitido quando o timer avança 1 segundo */
+  @Output() timerTick = new EventEmitter<string>();
+
+  /** Controla se está em modo edição inline */
+  isEditing = false;
+
+  /** Valor temporário do título em edição */
+  editTitle = '';
+
+  /** Controla visibilidade do menu de tags */
+  showTagMenu = false;
+
+  /** Referência do intervalo do timer */
+  private timerInterval: ReturnType<typeof setInterval> | null = null;
+
+  /** Tags disponíveis para seleção */
+  availableTags = AVAILABLE_TAGS;
+
+  ngOnDestroy(): void {
+    this.stopTimer();
+  }
+
+  /** Inicia o modo de edição do título */
+  startEditing(): void {
+    this.isEditing = true;
+    this.editTitle = this.task.title;
+  }
+
+  /** Salva o título editado */
+  saveEdit(): void {
+    const trimmed = this.editTitle.trim();
+    if (trimmed && trimmed !== this.task.title) {
+      this.update.emit({ id: this.task.id, updates: { title: trimmed } });
+    }
+    this.isEditing = false;
+  }
+
+  /** Cancela a edição */
+  cancelEdit(): void {
+    this.isEditing = false;
+  }
+
+  /** Trata teclas durante a edição (Enter salva, Escape cancela) */
+  onEditKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      this.saveEdit();
+    } else if (event.key === 'Escape') {
+      this.cancelEdit();
+    }
+  }
+
+  /** Emite evento para deletar a tarefa */
+  onDelete(): void {
+    this.delete.emit(this.task.id);
+  }
+
+  /** Emite evento para toggle de concluído */
+  onToggleCompleted(): void {
+    this.toggleCompleted.emit(this.task.id);
+  }
+
+  /** Alterna a presença de uma tag na tarefa */
+  toggleTag(tag: Tag): void {
+    const hasTags = this.task.tags.some(t => t.name === tag.name);
+    const newTags = hasTags
+      ? this.task.tags.filter(t => t.name !== tag.name)
+      : [...this.task.tags, tag];
+    this.update.emit({ id: this.task.id, updates: { tags: newTags } });
+  }
+
+  /** Verifica se uma tag está ativa na tarefa */
+  hasTag(tagName: string): boolean {
+    return this.task.tags.some(t => t.name === tagName);
+  }
+
+  /** Atualiza a data de vencimento */
+  onDueDateChange(dateStr: string): void {
+    this.update.emit({
+      id: this.task.id,
+      updates: { dueDate: dateStr || undefined },
+    });
+  }
+
+  /** Inicia ou pausa o timer da tarefa */
+  toggleTimer(): void {
+    if (this.task.timerRunning) {
+      this.stopTimer();
+      this.update.emit({ id: this.task.id, updates: { timerRunning: false } });
+    } else {
+      this.startTimer();
+      this.update.emit({ id: this.task.id, updates: { timerRunning: true } });
+    }
+  }
+
+  /** Inicia o timer com intervalo de 1 segundo */
+  private startTimer(): void {
+    this.stopTimer();
+    this.timerInterval = setInterval(() => {
+      this.timerTick.emit(this.task.id);
+    }, 1000);
+  }
+
+  /** Para o timer */
+  private stopTimer(): void {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+  }
+
+  /** Formata os segundos em HH:MM:SS */
+  formatTime(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${this.pad(h)}:${this.pad(m)}:${this.pad(s)}`;
+  }
+
+  /** Adiciona zero à esquerda */
+  private pad(n: number): string {
+    return n.toString().padStart(2, '0');
+  }
+
+  /** Verifica se a data de vencimento já passou */
+  isOverdue(): boolean {
+    if (!this.task.dueDate || this.task.completed) return false;
+    return new Date(this.task.dueDate) < new Date();
+  }
+
+  /** Fecha o menu de tags */
+  closeTagMenu(): void {
+    this.showTagMenu = false;
+  }
+}
