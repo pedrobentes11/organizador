@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Tag, AVAILABLE_TAGS } from '../../models/task.model';
@@ -16,6 +16,11 @@ export interface TaskFormData {
 /**
  * Componente de formulário para criar novas tarefas.
  *
+ * ─── POR QUE ONPUSH? ───
+ * O formulário é autocontido — seus dados são locais (ngModel).
+ * OnPush garante que ele não é re-checado desnecessariamente quando
+ * outras partes do board mudam (ex: drag de tarefas em outras colunas).
+ *
  * Responsabilidades:
  * - Capturar título, descrição, data de vencimento e tags
  * - Validar dados antes de emitir
@@ -27,6 +32,7 @@ export interface TaskFormData {
   imports: [CommonModule, FormsModule],
   templateUrl: './task-form.component.html',
   styleUrl: './task-form.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaskFormComponent {
   /** Evento emitido quando o formulário é submetido com dados válidos */

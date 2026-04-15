@@ -41,27 +41,58 @@ body {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Estilo para o placeholder do CDK drag and drop */
+/* ═══ CDK Drag and Drop — Estilos globais ═══ */
+
+/**
+ * Preview (clone visual) que aparece enquanto o item está sendo arrastado.
+ * Fica "elevado" com sombra e leve rotação para efeito de profundidade.
+ */
 .cdk-drag-preview {
   box-sizing: border-box;
   border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.4),
+    0 8px 16px -8px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(99, 102, 241, 0.2);
   opacity: 0.95;
-  transform: rotate(2deg);
+  transform: rotate(1.5deg) scale(1.02);
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(8px);
+  transition: box-shadow 150ms ease, transform 150ms ease;
 }
 
+/**
+ * Placeholder — espaço vazio que indica onde o item será solto.
+ * Borda tracejada e fundo sutil para indicar o slot.
+ */
 .cdk-drag-placeholder {
-  opacity: 0.3;
+  opacity: 0.4;
   border: 2px dashed rgba(99, 102, 241, 0.5);
   border-radius: 12px;
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(99, 102, 241, 0.08);
+  transition: opacity 200ms ease;
 }
 
+/**
+ * Animação de retorno quando o item é solto (snap to position).
+ * cubic-bezier suave para efeito elástico.
+ */
 .cdk-drag-animating {
-  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  transition: transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* Animação ao soltar item na lista */
+/**
+ * Animação nos demais itens da lista durante o drag.
+ * Faz os itens "abrirem espaço" suavemente.
+ */
 .cdk-drop-list-dragging .cdk-drag {
-  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  transition: transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/**
+ * Efeito visual de "pegar" — o item original fica semi-transparente
+ * enquanto o preview é arrastado.
+ */
+.cdk-drag-disabled {
+  cursor: default;
 }

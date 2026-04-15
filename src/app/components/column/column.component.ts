@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -7,17 +7,22 @@ import {
   CdkDropList,
 } from '@angular/cdk/drag-drop';
 import { Column } from '../../models/column.model';
-import { Task, Tag } from '../../models/task.model';
+import { Task } from '../../models/task.model';
 import { TaskCardComponent } from '../task-card/task-card.component';
 import { TaskFormComponent, TaskFormData } from '../task-form/task-form.component';
 
 /**
  * Componente que representa uma coluna (lista) do kanban.
  *
+ * ─── POR QUE ONPUSH AQUI? ───
+ * Cada coluna só re-renderiza quando o @Input column recebe uma NOVA referência.
+ * Ao mover uma tarefa em outra coluna, esta coluna NÃO re-renderiza se seus dados
+ * não mudaram — performance excelente com muitas colunas/tarefas.
+ *
  * Responsabilidades:
- * - Exibir lista de tarefas da coluna
+ * - Exibir lista de tarefas da coluna com scroll interno
  * - Gerenciar drag and drop (receber e enviar tarefas)
- * - Permitir edição do título da coluna
+ * - Edição do título da coluna
  * - Integrar com o formulário de nova tarefa
  */
 @Component({
@@ -33,6 +38,7 @@ import { TaskFormComponent, TaskFormData } from '../task-form/task-form.componen
   ],
   templateUrl: './column.component.html',
   styleUrl: './column.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ColumnComponent {
   /** Dados da coluna */

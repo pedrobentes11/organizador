@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Column, COLUMN_COLORS } from '../models/column.model';
 import { Task, Tag, generateId } from '../models/task.model';
 
@@ -9,31 +10,55 @@ const STORAGE_KEY = 'kanban_columns';
 /**
  * Serviço principal para gerenciamento de estado do kanban.
  *
- * Utiliza BehaviorSubject para estado reativo e localStorage para persistência.
- * Todas as operações utilizam programação imutável (spread/map/filter).
+ * ─── POR QUE USAR BEHAVIORSUBJECT? ───
+ * Mantém o último valor emitido, permitindo que novos subscribers
+ * recebam o estado atual imediatamente. Exposto como Observable<>
+ * para garantir que apenas o serviço mute o estado.
+ *
+ * ─── POR QUE IMUTABILIDADE? ───
+ * Ao criar novos arrays/objetos ao invés de mutar os existentes:
+ * 1. O Angular com OnPush detecta mudanças corretamente (compara referências)
+ * 2. Evita side-effects inesperados
+ * 3. Facilita debug e eventual undo/redo
+ * Mutações diretas seriam invisíveis ao OnPush.
+ *
+ * Usamos structuredClone() para deep clone antes de qualquer modificação.
  */
 @Injectable({ providedIn: 'root' })
 export class TaskService {
 
   /** BehaviorSubject que mantém o estado atual das colunas */
-  private columnsSubject = new BehaviorSubject<Column[]>(this.loadFromStorage());
+  private readonly columnsSubject = new BehaviorSubject<Column[]>(this.loadFromStorage());
 
-  /** Observable público para os componentes se inscreverem */
-  columns$: Observable<Column[]> = this.columnsSubject.asObservable();
+  /** Observable público — componentes se inscrevem aqui para receber atualizações */
+  readonly columns$: Observable<Column[]> = this.columnsSubject.asObservable();
 
   constructor() {
-    // Se não há colunas salvas, cria colunas padrão
     if (this.columnsSubject.getValue().length === 0) {
       this.initializeDefaultColumns();
     }
   }
 
-  // ─── COLUNAS ──────────────────────────────────────────────
+  // ─── UTILS ────────────────────────────────────────────────
 
-  /** Retorna o estado atual das colunas (snapshot) */
+  /**
+   * Deep clone do estado atual das colunas.
+   *
+   * ─── POR QUE DEEP CLONE? ───
+   * O spread ([...arr]) faz shallow copy — objetos internos continuam
+   * sendo a mesma referência. structuredClone() copia recursivamente,
+   * garantindo que nenhuma operação altere o estado anterior.
+   */
+  private cloneColumns(): Column[] {
+    return structuredClone(this.columnsSubject.getValue());
+  }
+
+  /** Retorna snapshot somente-leitura do estado atual */
   getColumns(): Column[] {
     return this.columnsSubject.getValue();
   }
+
+  // ─── COLUNAS ──────────────────────────────────────────────
 
   /** Cria colunas padrão ao iniciar pela primeira vez */
   private initializeDefaultColumns(): void {
@@ -47,7 +72,7 @@ export class TaskService {
 
   /** Adiciona uma nova coluna ao board */
   addColumn(title: string): void {
-    const columns = this.getColumns();
+    const columns = this.cloneColumns();
     const colorIndex = columns.length % COLUMN_COLORS.length;
     const newColumn: Column = {
       id: generateId(),
@@ -55,21 +80,20 @@ export class TaskService {
       color: COLUMN_COLORS[colorIndex],
       tasks: [],
     };
-    // Imutável: cria novo array com a coluna adicionada
     this.updateColumns([...columns, newColumn]);
   }
 
   /** Remove uma coluna pelo ID */
   deleteColumn(columnId: string): void {
-    const columns = this.getColumns().filter(col => col.id !== columnId);
+    const columns = this.cloneColumns().filter(col => col.id !== columnId);
     this.updateColumns(columns);
   }
 
   /** Atualiza o título de uma coluna */
   updateColumnTitle(columnId: string, newTitle: string): void {
-    const columns = this.getColumns().map(col =>
-      col.id === columnId ? { ...col, title: newTitle } : col
-    );
+    const columns = this.cloneColumns();
+    const col = columns.find(c => c.id === columnId);
+    if (col) col.title = newTitle; // seguro pois é deep clone
     this.updateColumns(columns);
   }
 
@@ -88,26 +112,24 @@ export class TaskService {
       timerSeconds: 0,
       timerRunning: false,
     };
-    const columns = this.getColumns().map(col =>
-      col.id === columnId
-        ? { ...col, tasks: [...col.tasks, newTask] }
-        : col
-    );
+    const columns = this.cloneColumns();
+    const col = columns.find(c => c.id === columnId);
+    if (col) col.tasks = [...col.tasks, newTask];
     this.updateColumns(columns);
   }
 
   /** Remove uma tarefa de qualquer coluna */
   deleteTask(taskId: string): void {
-    const columns = this.getColumns().map(col => ({
+    const columns = this.cloneColumns().map(col => ({
       ...col,
       tasks: col.tasks.filter(task => task.id !== taskId),
     }));
     this.updateColumns(columns);
   }
 
-  /** Atualiza uma tarefa existente (edição parcial) */
+  /** Atualiza uma tarefa existente (edição parcial imutável) */
   updateTask(taskId: string, updates: Partial<Task>): void {
-    const columns = this.getColumns().map(col => ({
+    const columns = this.cloneColumns().map(col => ({
       ...col,
       tasks: col.tasks.map(task =>
         task.id === taskId ? { ...task, ...updates } : task
@@ -118,7 +140,7 @@ export class TaskService {
 
   /** Marca ou desmarca uma tarefa como concluída */
   toggleTaskCompleted(taskId: string): void {
-    const columns = this.getColumns().map(col => ({
+    const columns = this.cloneColumns().map(col => ({
       ...col,
       tasks: col.tasks.map(task =>
         task.id === taskId ? { ...task, completed: !task.completed } : task
@@ -127,26 +149,29 @@ export class TaskService {
     this.updateColumns(columns);
   }
 
-  // ─── DRAG AND DROP ────────────────────────────────────────
+  // ─── DRAG AND DROP (CDK moveItemInArray / transferArrayItem) ──
 
   /**
-   * Move uma tarefa dentro da mesma coluna (reordenar).
-   * Utiliza splice de forma imutável criando cópia do array.
+   * Reordena uma tarefa dentro da mesma coluna.
+   *
+   * Usa moveItemInArray() do CDK que internamente faz splice.
+   * Seguro pois operamos sobre um deep clone — o estado original não é mutado.
    */
   moveTaskInSameColumn(columnId: string, previousIndex: number, currentIndex: number): void {
-    const columns = this.getColumns().map(col => {
-      if (col.id !== columnId) return col;
-      const tasks = [...col.tasks];
-      const [moved] = tasks.splice(previousIndex, 1);
-      tasks.splice(currentIndex, 0, moved);
-      return { ...col, tasks };
-    });
+    if (previousIndex === currentIndex) return; // sem mudança, evita re-render
+    const columns = this.cloneColumns();
+    const col = columns.find(c => c.id === columnId);
+    if (!col) return;
+    moveItemInArray(col.tasks, previousIndex, currentIndex);
     this.updateColumns(columns);
   }
 
   /**
    * Move uma tarefa entre colunas diferentes.
-   * Remove da coluna de origem e insere na coluna de destino.
+   *
+   * Usa transferArrayItem() do CDK que remove do array de origem
+   * e insere no array de destino nas posições corretas.
+   * Deep clone garante que os arrays originais não são mutados.
    */
   moveTaskBetweenColumns(
     fromColumnId: string,
@@ -154,40 +179,33 @@ export class TaskService {
     previousIndex: number,
     currentIndex: number
   ): void {
-    const columns = this.getColumns();
+    const columns = this.cloneColumns();
     const fromCol = columns.find(c => c.id === fromColumnId);
-    if (!fromCol) return;
+    const toCol = columns.find(c => c.id === toColumnId);
+    if (!fromCol || !toCol) return;
 
-    const taskToMove = fromCol.tasks[previousIndex];
-    if (!taskToMove) return;
+    transferArrayItem(fromCol.tasks, toCol.tasks, previousIndex, currentIndex);
+    this.updateColumns(columns);
+  }
 
-    const updated = columns.map(col => {
-      if (col.id === fromColumnId) {
-        // Remove tarefa da coluna de origem
-        return { ...col, tasks: col.tasks.filter((_, i) => i !== previousIndex) };
-      }
-      if (col.id === toColumnId) {
-        // Insere tarefa na coluna de destino
-        const tasks = [...col.tasks];
-        tasks.splice(currentIndex, 0, taskToMove);
-        return { ...col, tasks };
-      }
-      return col;
-    });
-    this.updateColumns(updated);
+  /**
+   * Método público para setar estado completo das colunas.
+   * Útil para operações de drag complexas feitas diretamente no Board.
+   */
+  setColumns(columns: Column[]): void {
+    this.updateColumns(columns);
   }
 
   // ─── TIMER ────────────────────────────────────────────────
 
   /** Incrementa o timer de uma tarefa em 1 segundo */
   incrementTimer(taskId: string): void {
-    const columns = this.getColumns().map(col => ({
+    const columns = this.cloneColumns().map(col => ({
       ...col,
       tasks: col.tasks.map(task =>
         task.id === taskId ? { ...task, timerSeconds: task.timerSeconds + 1 } : task
       ),
     }));
-    // Persiste sem notificar a cada segundo (usa subject diretamente)
     this.columnsSubject.next(columns);
     this.saveToStorage(columns);
   }
@@ -205,7 +223,7 @@ export class TaskService {
     }
   }
 
-  /** Salva dados no localStorage */
+  /** Salva dados no localStorage — chamado automaticamente a cada updateColumns */
   private saveToStorage(columns: Column[]): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(columns));
@@ -214,7 +232,10 @@ export class TaskService {
     }
   }
 
-  /** Atualiza o estado e persiste automaticamente */
+  /**
+   * Atualiza o estado e persiste automaticamente.
+   * Sempre emite um NOVO array via .next() — essencial para OnPush detectar a mudança.
+   */
   private updateColumns(columns: Column[]): void {
     this.columnsSubject.next(columns);
     this.saveToStorage(columns);

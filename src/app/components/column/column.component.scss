@@ -3,3 +3,31 @@
   display: block;
   height: 100%;
 }
+
+/*
+ * Destaque visual quando a coluna está recebendo um item arrastado.
+ * A classe .cdk-drop-list-receiving é adicionada automaticamente pelo CDK.
+ */
+.drop-zone.cdk-drop-list-receiving {
+  background-color: rgba(99, 102, 241, 0.08);
+  border: 2px dashed rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  transition: all 200ms ease;
+}
+
+/*
+ * Destaque visual quando itens estão sendo arrastados dentro da lista.
+ * A classe .cdk-drop-list-dragging é adicionada automaticamente pelo CDK.
+ */
+.drop-zone.cdk-drop-list-dragging {
+  background-color: rgba(99, 102, 241, 0.04);
+}
+
+/* Cursor grab para os itens arrastáveis */
+.drag-item {
+  cursor: grab;
+}
+
+.drag-item:active {
+  cursor: grabbing;
+}

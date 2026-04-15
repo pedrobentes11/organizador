@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
@@ -12,12 +12,20 @@ import { TaskFormData } from '../task-form/task-form.component';
 /**
  * Componente principal do board kanban.
  *
+ * ─── POR QUE ONPUSH? ───
+ * ChangeDetectionStrategy.OnPush faz com que o Angular só verifique
+ * este componente quando:
+ *  1. Um @Input() recebe uma NOVA referência (shallow compare)
+ *  2. Um evento é disparado dentro do template
+ *  3. markForCheck() é chamado manualmente
+ * Isso evita que TODA a árvore de componentes seja re-checada a cada tick,
+ * melhorando drasticamente a performance em listas grandes.
+ *
  * Responsabilidades:
- * - Renderizar todas as colunas com scroll horizontal
- * - Gerenciar o filtro de busca de tarefas
+ * - Renderizar colunas com scroll horizontal
+ * - Gerenciar filtro de busca
  * - Coordenar drag and drop entre colunas
- * - Adicionar/remover colunas
- * - Orquestrar comunicação entre componentes e o serviço
+ * - Orquestrar comunicação componentes ↔ serviço
  */
 @Component({
   selector: 'app-board',
@@ -25,6 +33,7 @@ import { TaskFormData } from '../task-form/task-form.component';
   imports: [CommonModule, FormsModule, ColumnComponent],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BoardComponent implements OnInit, OnDestroy {
   /** Lista de colunas do kanban */
@@ -32,6 +41,12 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   /** Colunas filtradas (usadas na renderização) */
   filteredColumns: Column[] = [];
+
+  /**
+   * Cache dos IDs de colunas para conectar drop lists.
+   * Evita recalcular no template a cada change detection.
+   */
+  columnIds: string[] = [];
 
   /** Texto do filtro de busca */
   searchFilter = '';
@@ -45,13 +60,22 @@ export class BoardComponent implements OnInit, OnDestroy {
   /** Subscription do observable de colunas */
   private columnsSubscription!: Subscription;
 
-  constructor(private taskService: TaskService) {}
+  constructor(
+    private taskService: TaskService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
-    // Inscreve-se no observable de colunas do serviço
+    /**
+     * Inscreve-se no observable de colunas.
+     * Com OnPush, precisamos chamar markForCheck() para notificar o Angular
+     * que os dados mudaram via subscribe (não é um @Input).
+     */
     this.columnsSubscription = this.taskService.columns$.subscribe(columns => {
       this.columns = columns;
+      this.columnIds = columns.map(col => col.id);
       this.applyFilter();
+      this.cdr.markForCheck(); // essencial com OnPush + subscribe
     });
   }
 
@@ -66,7 +90,6 @@ export class BoardComponent implements OnInit, OnDestroy {
     const term = this.searchFilter.toLowerCase().trim();
 
     if (!term) {
-      // Sem filtro: exibe todas as tarefas
       this.filteredColumns = this.columns;
       return;
     }
@@ -88,11 +111,6 @@ export class BoardComponent implements OnInit, OnDestroy {
   }
 
   // ─── COLUNAS ──────────────────────────────────────────────
-
-  /** Retorna IDs de todas as colunas (para conectar drop lists) */
-  getColumnIds(): string[] {
-    return this.columns.map(col => col.id);
-  }
 
   /** Adiciona nova coluna ao board */
   addColumn(): void {
@@ -155,22 +173,28 @@ export class BoardComponent implements OnInit, OnDestroy {
   // ─── DRAG AND DROP ────────────────────────────────────────
 
   /**
-   * Trata o evento de drop do CDK.
-   * Verifica se é na mesma coluna ou entre colunas diferentes.
+   * Trata o evento de drop do CDK DragDrop.
+   *
+   * Usa moveItemInArray (mesma coluna) ou transferArrayItem (entre colunas)
+   * através do serviço. O serviço faz deep clone antes de operar,
+   * emite novo estado via .next() e persiste no localStorage automaticamente.
    */
   onTaskDropped(event: CdkDragDrop<Task[]>): void {
-    if (event.previousContainer === event.container) {
-      // Reordenar dentro da mesma coluna
+    const fromId = event.previousContainer.id;
+    const toId = event.container.id;
+
+    if (fromId === toId) {
+      // Mesma coluna → reordenar
       this.taskService.moveTaskInSameColumn(
-        event.container.id,
+        toId,
         event.previousIndex,
         event.currentIndex
       );
     } else {
-      // Mover entre colunas
+      // Colunas diferentes → transferir
       this.taskService.moveTaskBetweenColumns(
-        event.previousContainer.id,
-        event.container.id,
+        fromId,
+        toId,
         event.previousIndex,
         event.currentIndex
       );

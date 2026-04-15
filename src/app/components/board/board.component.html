@@ -74,7 +74,7 @@
     @for (column of filteredColumns; track column.id) {
       <app-column
         [column]="column"
-        [connectedDropLists]="getColumnIds()"
+        [connectedDropLists]="columnIds"
         (addTask)="onAddTask($event)"
         (deleteTask)="onDeleteTask($event)"
         (updateTask)="onUpdateTask($event)"

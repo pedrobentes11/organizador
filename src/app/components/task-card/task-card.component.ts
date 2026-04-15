@@ -1,10 +1,16 @@
-import { Component, Input, Output, EventEmitter, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnDestroy, OnChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Task, Tag, AVAILABLE_TAGS } from '../../models/task.model';
 
 /**
  * Componente que representa um card de tarefa individual.
+ *
+ * ─── POR QUE ONPUSH AQUI? ───
+ * Cada card só re-renderiza quando o @Input task recebe nova referência.
+ * Se 100 tarefas existem e 1 é editada, apenas aquele card é re-checado.
+ * Para o timer (que atualiza a cada segundo), usamos ChangeDetectorRef
+ * para marcar APENAS este card para re-check, sem afetar os demais.
  *
  * Responsabilidades:
  * - Exibir informações da tarefa (título, tags, data, timer)
@@ -18,8 +24,9 @@ import { Task, Tag, AVAILABLE_TAGS } from '../../models/task.model';
   imports: [CommonModule, FormsModule],
   templateUrl: './task-card.component.html',
   styleUrl: './task-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TaskCardComponent implements OnDestroy {
+export class TaskCardComponent implements OnChanges, OnDestroy {
   /** Tarefa exibida neste card */
   @Input({ required: true }) task!: Task;
 
@@ -49,6 +56,19 @@ export class TaskCardComponent implements OnDestroy {
 
   /** Tags disponíveis para seleção */
   availableTags = AVAILABLE_TAGS;
+
+  /**
+   * Cache do resultado de isOverdue para evitar recalcular no template.
+   * Atualizado quando o @Input task muda.
+   */
+  cachedOverdue = false;
+
+  constructor(private cdr: ChangeDetectorRef) {}
+
+  /** Atualiza cache quando o input task muda */
+  ngOnChanges(): void {
+    this.cachedOverdue = this.computeOverdue();
+  }
 
   ngOnDestroy(): void {
     this.stopTimer();
@@ -126,11 +146,16 @@ export class TaskCardComponent implements OnDestroy {
     }
   }
 
-  /** Inicia o timer com intervalo de 1 segundo */
+  /**
+   * Inicia o timer com intervalo de 1 segundo.
+   * Usa markForCheck() para notificar OnPush que este card específico
+   * precisa ser re-renderizado — sem afetar os demais cards.
+   */
   private startTimer(): void {
     this.stopTimer();
     this.timerInterval = setInterval(() => {
       this.timerTick.emit(this.task.id);
+      this.cdr.markForCheck(); // força re-check apenas deste card
     }, 1000);
   }
 
@@ -155,8 +180,8 @@ export class TaskCardComponent implements OnDestroy {
     return n.toString().padStart(2, '0');
   }
 
-  /** Verifica se a data de vencimento já passou */
-  isOverdue(): boolean {
+  /** Calcula se a data de vencimento já passou (usado no cache) */
+  private computeOverdue(): boolean {
     if (!this.task.dueDate || this.task.completed) return false;
     return new Date(this.task.dueDate) < new Date();
   }

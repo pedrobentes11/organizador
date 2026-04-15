@@ -1,10 +1,14 @@
 <!-- Coluna do kanban -->
-<div class="flex h-full w-80 shrink-0 flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+<div class="flex h-full w-80 shrink-0 flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
 
   <!-- Header da coluna -->
   <div class="flex items-center gap-2 p-4 pb-2">
     <!-- Indicador de cor da coluna -->
-    <div class="h-3 w-3 shrink-0 rounded-full" [style.background-color]="column.color"></div>
+    <div
+      class="h-3 w-3 shrink-0 rounded-full shadow-lg"
+      [style.background-color]="column.color"
+      [style.box-shadow]="'0 0 8px ' + column.color + '50'"
+    ></div>
 
     <!-- Título: modo visualização ou edição -->
     @if (isEditingTitle) {
@@ -43,18 +47,32 @@
     </button>
   </div>
 
-  <!-- Lista de tarefas com drag and drop -->
+  <!--
+    Lista de tarefas com drag and drop.
+    max-h com overflow-y-auto garante scroll interno na coluna.
+    A classe 'cdk-drop-list-receiving' é adicionada automaticamente pelo CDK
+    quando um item está sendo arrastado sobre esta lista — usamos CSS para destacar.
+  -->
   <div
     cdkDropList
     [cdkDropListData]="column.tasks"
     [id]="column.id"
     [cdkDropListConnectedTo]="connectedDropLists"
     (cdkDropListDropped)="onDrop($event)"
-    class="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-2"
-    [class.min-h-[60px]]="true"
+    class="drop-zone flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-2"
+    style="min-height: 60px; max-height: calc(100vh - 260px);"
   >
+    <!--
+      @for com track por task.id — o Angular reutiliza DOM nodes
+      quando o ID permanece o mesmo, evitando destruir/recriar o componente.
+      Equivalente ao trackBy do *ngFor em versões anteriores.
+    -->
     @for (task of column.tasks; track task.id) {
-      <div cdkDrag [cdkDragData]="task">
+      <div cdkDrag [cdkDragData]="task" class="drag-item">
+        <!--
+          Drag handle customizado: o card inteiro é arrastável,
+          e o CDK mostra o cdk-drag-preview (clone visual) enquanto arrasta.
+        -->
         <app-task-card
           [task]="task"
           (delete)="onDeleteTask($event)"
