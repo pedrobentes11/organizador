@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
@@ -37,7 +37,10 @@ export class LoginComponent {
   loading = false;
   errorMessage = '';
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   /** Alterna entre login e registro */
   toggleMode(): void {
@@ -52,26 +55,39 @@ export class LoginComponent {
     if (this.mode === 'register') {
       if (this.password !== this.confirmPassword) {
         this.errorMessage = 'As senhas não coincidem.';
+        this.cdr.markForCheck();
         return;
       }
       if (this.password.length < 6) {
         this.errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
+        this.cdr.markForCheck();
         return;
       }
     }
 
     this.loading = true;
+    this.cdr.markForCheck();
+
+    console.log(`[Auth] Iniciando ${this.mode} para: ${this.email}`);
 
     try {
       if (this.mode === 'login') {
+        console.log('[Auth] Tentando login com email/senha...');
         await this.authService.login(this.email, this.password);
+        console.log('[Auth] Login realizado com sucesso!');
       } else {
+        console.log('[Auth] Tentando criar conta...');
         await this.authService.register(this.email, this.password, this.displayName.trim() || undefined);
+        console.log('[Auth] Conta criada com sucesso!');
       }
     } catch (error: any) {
+      console.error('[Auth] Erro ao autenticar:', error);
+      console.error('[Auth] Código do erro:', error?.code);
+      console.error('[Auth] Mensagem original:', error?.message);
       this.errorMessage = this.translateFirebaseError(error.code);
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -79,13 +95,21 @@ export class LoginComponent {
   async loginWithGoogle(): Promise<void> {
     this.errorMessage = '';
     this.loading = true;
+    this.cdr.markForCheck();
+
+    console.log('[Auth] Iniciando login com Google...');
 
     try {
       await this.authService.loginWithGoogle();
+      console.log('[Auth] Login com Google realizado com sucesso!');
     } catch (error: any) {
+      console.error('[Auth] Erro no login com Google:', error);
+      console.error('[Auth] Código do erro:', error?.code);
+      console.error('[Auth] Mensagem original:', error?.message);
       this.errorMessage = this.translateFirebaseError(error.code);
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 

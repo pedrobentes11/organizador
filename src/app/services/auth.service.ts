@@ -76,12 +76,16 @@ export class AuthService {
    * Opcionalmente define o displayName.
    */
   async register(email: string, password: string, displayName?: string): Promise<void> {
+    console.log('[AuthService] Chamando createUserWithEmailAndPassword...');
     const credential = await createUserWithEmailAndPassword(this.auth, email, password);
+    console.log('[AuthService] Usuário criado no Firebase:', credential.user?.uid);
 
     if (displayName && credential.user) {
+      console.log('[AuthService] Atualizando displayName:', displayName);
       await updateProfile(credential.user, { displayName });
     }
 
+    console.log('[AuthService] Redirecionando para /board...');
     this.router.navigate(['/board']);
   }
 
@@ -89,14 +93,18 @@ export class AuthService {
 
   /** Login com email e senha */
   async login(email: string, password: string): Promise<void> {
+    console.log('[AuthService] Chamando signInWithEmailAndPassword...');
     await signInWithEmailAndPassword(this.auth, email, password);
+    console.log('[AuthService] Login bem-sucedido, redirecionando...');
     this.router.navigate(['/board']);
   }
 
   /** Login com conta Google */
   async loginWithGoogle(): Promise<void> {
+    console.log('[AuthService] Iniciando signInWithPopup (Google)...');
     const provider = new GoogleAuthProvider();
     await signInWithPopup(this.auth, provider);
+    console.log('[AuthService] Login Google bem-sucedido, redirecionando...');
     this.router.navigate(['/board']);
   }
 
