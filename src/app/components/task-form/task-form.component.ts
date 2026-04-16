@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Output, EventEmitter, ChangeDetectionStrategy, HostListener, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Tag, AVAILABLE_TAGS } from '../../models/task.model';
@@ -54,6 +54,20 @@ export class TaskFormComponent {
 
   /** Tags disponíveis para seleção */
   availableTags = AVAILABLE_TAGS;
+
+  constructor(
+    private elementRef: ElementRef,
+    private cdr: ChangeDetectorRef,
+  ) {}
+
+  /** Recolhe o formulário ao clicar fora do componente */
+  @HostListener('document:click', ['$event.target'])
+  onClickOutside(target: HTMLElement): void {
+    if (this.isExpanded && !this.elementRef.nativeElement.contains(target)) {
+      this.resetForm();
+      this.cdr.markForCheck();
+    }
+  }
 
   /** Expande o formulário ao clicar no input */
   expand(): void {
