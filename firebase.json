@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "site": "control-e",
+    "public": "dist/organizador/browser",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
