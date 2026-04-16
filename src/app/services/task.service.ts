@@ -3,9 +3,10 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Column, COLUMN_COLORS } from '../models/column.model';
 import { Task, Tag, generateId } from '../models/task.model';
+import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 
-/** Chave usada para persistir dados no localStorage */
-const STORAGE_KEY = 'kanban_columns';
+/** Prefixo da chave no localStorage — concatenado com o userId */
+const STORAGE_PREFIX = 'kanban_columns_';
 
 /**
  * Serviço principal para gerenciamento de estado do kanban.
@@ -28,15 +29,33 @@ const STORAGE_KEY = 'kanban_columns';
 export class TaskService {
 
   /** BehaviorSubject que mantém o estado atual das colunas */
-  private readonly columnsSubject = new BehaviorSubject<Column[]>(this.loadFromStorage());
+  private readonly columnsSubject = new BehaviorSubject<Column[]>([]);
 
   /** Observable público — componentes se inscrevem aqui para receber atualizações */
   readonly columns$: Observable<Column[]> = this.columnsSubject.asObservable();
 
-  constructor() {
-    if (this.columnsSubject.getValue().length === 0) {
-      this.initializeDefaultColumns();
-    }
+  /** UID do usuário logado — usado como chave no localStorage */
+  private currentUserId: string | null = null;
+
+  constructor(private auth: Auth) {
+    // Escuta mudanças de auth para carregar dados do usuário correto
+    onAuthStateChanged(this.auth, (user) => {
+      this.currentUserId = user?.uid ?? null;
+      if (user) {
+        const columns = this.loadFromStorage();
+        this.columnsSubject.next(columns);
+        if (columns.length === 0) {
+          this.initializeDefaultColumns();
+        }
+      } else {
+        this.columnsSubject.next([]);
+      }
+    });
+  }
+
+  /** Retorna a chave do localStorage para o usuário atual */
+  private get storageKey(): string {
+    return STORAGE_PREFIX + (this.currentUserId ?? 'anonymous');
   }
 
   // ─── UTILS ────────────────────────────────────────────────
@@ -232,7 +251,7 @@ export class TaskService {
   /** Carrega dados do localStorage */
   private loadFromStorage(): Column[] {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
+      const data = localStorage.getItem(this.storageKey);
       return data ? JSON.parse(data) : [];
     } catch {
       console.error('Erro ao carregar dados do localStorage');
@@ -243,7 +262,7 @@ export class TaskService {
   /** Salva dados no localStorage — chamado automaticamente a cada updateColumns */
   private saveToStorage(columns: Column[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(columns));
+      localStorage.setItem(this.storageKey, JSON.stringify(columns));
     } catch {
       console.error('Erro ao salvar dados no localStorage');
     }

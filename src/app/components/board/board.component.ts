@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { Column } from '../../models/column.model';
 import { Task } from '../../models/task.model';
 import { TaskService } from '../../services/task.service';
+import { AuthService } from '../../services/auth.service';
 import { NotificationService, DeadlineNotification } from '../../services/notification.service';
 import { ColumnComponent } from '../column/column.component';
 import { TaskFormData } from '../task-form/task-form.component';
@@ -67,9 +68,16 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   constructor(
     private taskService: TaskService,
+    private authService: AuthService,
     private notificationService: NotificationService,
     private cdr: ChangeDetectorRef,
   ) {}
+
+  /** Nome do usuário logado para exibir no header */
+  get currentUserName(): string {
+    const user = this.authService.currentUser;
+    return user?.displayName || user?.email?.split('@')[0] || '';
+  }
 
   ngOnInit(): void {
     /**
@@ -228,5 +236,10 @@ export class BoardComponent implements OnInit, OnDestroy {
   /** Descarta todas as notificações */
   dismissAllNotifications(): void {
     this.notificationService.dismissAll();
+  }
+
+  /** Faz logout do usuário */
+  onLogout(): void {
+    this.authService.logout();
   }
 }

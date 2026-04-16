@@ -1,15 +1,15 @@
 import { Component } from '@angular/core';
-import { BoardComponent } from './components/board/board.component';
+import { RouterOutlet } from '@angular/router';
 
 /**
  * Componente raiz da aplicação.
- * Renderiza o board do kanban diretamente.
+ * Usa router-outlet para navegação entre login e board.
  */
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [BoardComponent],
-  template: '<app-board />',
+  imports: [RouterOutlet],
+  template: '<router-outlet />',
   styles: [':host { display: block; height: 100vh; }'],
 })
 export class AppComponent {}
