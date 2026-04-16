@@ -221,6 +221,20 @@ export class TaskService {
     if (!fromCol || !toCol) return;
 
     transferArrayItem(fromCol.tasks, toCol.tasks, previousIndex, currentIndex);
+
+    // Se a coluna de destino for "concluído", marca a tarefa como concluída
+    // Se a coluna de origem era "concluído" e o destino não é, desmarca
+    const isDestinationDone = toCol.title.toLowerCase().includes('conclu');
+    const isOriginDone = fromCol.title.toLowerCase().includes('conclu');
+    const movedTask = toCol.tasks[currentIndex];
+    if (movedTask) {
+      if (isDestinationDone && !movedTask.completed) {
+        movedTask.completed = true;
+      } else if (!isDestinationDone && isOriginDone && movedTask.completed) {
+        movedTask.completed = false;
+      }
+    }
+
     this.updateColumns(columns);
   }
 
