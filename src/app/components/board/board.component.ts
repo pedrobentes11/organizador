@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { Column } from '../../models/column.model';
 import { Task } from '../../models/task.model';
 import { TaskService } from '../../services/task.service';
+import { NotificationService, DeadlineNotification } from '../../services/notification.service';
 import { ColumnComponent } from '../column/column.component';
 import { TaskFormData } from '../task-form/task-form.component';
 
@@ -51,6 +52,9 @@ export class BoardComponent implements OnInit, OnDestroy {
   /** Texto do filtro de busca */
   searchFilter = '';
 
+  /** Notificações de prazo expirado (toasts) */
+  notifications: DeadlineNotification[] = [];
+
   /** Controla visibilidade do input de nova coluna */
   showNewColumnInput = false;
 
@@ -59,9 +63,11 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   /** Subscription do observable de colunas */
   private columnsSubscription!: Subscription;
+  private notificationsSubscription!: Subscription;
 
   constructor(
     private taskService: TaskService,
+    private notificationService: NotificationService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -75,12 +81,22 @@ export class BoardComponent implements OnInit, OnDestroy {
       this.columns = columns;
       this.columnIds = columns.map(col => col.id);
       this.applyFilter();
-      this.cdr.markForCheck(); // essencial com OnPush + subscribe
+      this.cdr.markForCheck();
     });
+
+    // Inscreve-se nas notificações de prazo expirado
+    this.notificationsSubscription = this.notificationService.notifications$.subscribe(notifications => {
+      this.notifications = notifications;
+      this.cdr.markForCheck();
+    });
+
+    // Inicializa monitoramento de deadlines e pede permissão de notificação
+    this.notificationService.init();
   }
 
   ngOnDestroy(): void {
     this.columnsSubscription?.unsubscribe();
+    this.notificationsSubscription?.unsubscribe();
   }
 
   // ─── FILTRO DE BUSCA ──────────────────────────────────────
@@ -146,7 +162,8 @@ export class BoardComponent implements OnInit, OnDestroy {
       event.data.title,
       event.data.description,
       event.data.dueDate,
-      event.data.tags
+      event.data.tags,
+      event.data.dueTime
     );
   }
 
@@ -199,5 +216,17 @@ export class BoardComponent implements OnInit, OnDestroy {
         event.currentIndex
       );
     }
+  }
+
+  // ─── NOTIFICAÇÕES ─────────────────────────────────────────
+
+  /** Descarta uma notificação toast */
+  dismissNotification(id: string): void {
+    this.notificationService.dismissNotification(id);
+  }
+
+  /** Descarta todas as notificações */
+  dismissAllNotifications(): void {
+    this.notificationService.dismissAll();
   }
 }

@@ -10,6 +10,7 @@ export interface TaskFormData {
   title: string;
   description?: string;
   dueDate?: string;
+  dueTime?: string;
   tags: Tag[];
 }
 
@@ -45,6 +46,7 @@ export class TaskFormComponent {
   title = '';
   description = '';
   dueDate = '';
+  dueTime = '';
   selectedTags: Tag[] = [];
 
   /** Controla a visibilidade do formulário expandido */
@@ -67,6 +69,7 @@ export class TaskFormComponent {
       title: trimmedTitle,
       description: this.description.trim() || undefined,
       dueDate: this.dueDate || undefined,
+      dueTime: this.dueTime || undefined,
       tags: [...this.selectedTags],
     });
 
@@ -97,6 +100,7 @@ export class TaskFormComponent {
     this.title = '';
     this.description = '';
     this.dueDate = '';
+    this.dueTime = '';
     this.selectedTags = [];
     this.isExpanded = false;
   }

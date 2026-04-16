@@ -100,17 +100,19 @@ export class TaskService {
   // ─── TAREFAS ──────────────────────────────────────────────
 
   /** Adiciona uma tarefa a uma coluna específica */
-  addTask(columnId: string, title: string, description?: string, dueDate?: string, tags: Tag[] = []): void {
+  addTask(columnId: string, title: string, description?: string, dueDate?: string, tags: Tag[] = [], dueTime?: string): void {
     const newTask: Task = {
       id: generateId(),
       title,
       description,
       dueDate,
+      dueTime,
       tags,
       completed: false,
       createdAt: new Date().toISOString(),
       timerSeconds: 0,
       timerRunning: false,
+      deadlineNotified: false,
     };
     const columns = this.cloneColumns();
     const col = columns.find(c => c.id === columnId);
@@ -127,13 +129,28 @@ export class TaskService {
     this.updateColumns(columns);
   }
 
-  /** Atualiza uma tarefa existente (edição parcial imutável) */
+  /**
+   * Atualiza uma tarefa existente (edição parcial imutável).
+   * Se dueDate ou dueTime forem alterados, reseta deadlineNotified
+   * para que a notificação possa ser disparada novamente.
+   */
   updateTask(taskId: string, updates: Partial<Task>): void {
     const columns = this.cloneColumns().map(col => ({
       ...col,
-      tasks: col.tasks.map(task =>
-        task.id === taskId ? { ...task, ...updates } : task
-      ),
+      tasks: col.tasks.map(task => {
+        if (task.id !== taskId) return task;
+
+        // Se prazo mudou, resetar flag de notificação
+        const deadlineChanged =
+          ('dueDate' in updates && updates.dueDate !== task.dueDate) ||
+          ('dueTime' in updates && updates.dueTime !== task.dueTime);
+
+        return {
+          ...task,
+          ...updates,
+          ...(deadlineChanged ? { deadlineNotified: false } : {}),
+        };
+      }),
     }));
     this.updateColumns(columns);
   }

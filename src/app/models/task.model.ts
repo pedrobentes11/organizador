@@ -12,8 +12,11 @@ export interface Task {
   /** Descrição opcional da tarefa */
   description?: string;
 
-  /** Data de vencimento (ISO string) */
+  /** Data de vencimento (YYYY-MM-DD) */
   dueDate?: string;
+
+  /** Horário de vencimento (HH:mm) — usado junto com dueDate para prazo exato */
+  dueTime?: string;
 
   /** Tags/categorias associadas à tarefa */
   tags: Tag[];
@@ -29,6 +32,20 @@ export interface Task {
 
   /** Se o timer está rodando atualmente */
   timerRunning: boolean;
+
+  /** Se já foi enviada notificação de prazo expirado (evita repetir alerta) */
+  deadlineNotified?: boolean;
+}
+
+/**
+ * Monta um Date a partir de dueDate (YYYY-MM-DD) e dueTime (HH:mm) opcionais.
+ * Retorna null se não houver dueDate.
+ * Se dueTime não for informado, assume 23:59 do dia.
+ */
+export function buildDeadline(dueDate?: string, dueTime?: string): Date | null {
+  if (!dueDate) return null;
+  const time = dueTime || '23:59';
+  return new Date(`${dueDate}T${time}:00`);
 }
 
 /**

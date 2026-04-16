@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnDestroy, OnChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Task, Tag, AVAILABLE_TAGS } from '../../models/task.model';
+import { Task, Tag, AVAILABLE_TAGS, buildDeadline } from '../../models/task.model';
 
 /**
  * Componente que representa um card de tarefa individual.
@@ -63,11 +63,25 @@ export class TaskCardComponent implements OnChanges, OnDestroy {
    */
   cachedOverdue = false;
 
+  /**
+   * Texto de countdown até o prazo (ex: "2h 30min" ou "Expirada há 1h").
+   * Atualizado no ngOnChanges e a cada segundo se o timer estiver rodando.
+   */
+  cachedCountdown = '';
+
+  /**
+   * Flag para indicar urgência extrema (menos de 1 hora para o prazo).
+   * Usada para aplicar animação de pulse no card.
+   */
+  cachedUrgent = false;
+
   constructor(private cdr: ChangeDetectorRef) {}
 
-  /** Atualiza cache quando o input task muda */
+  /** Atualiza caches quando o input task muda */
   ngOnChanges(): void {
     this.cachedOverdue = this.computeOverdue();
+    this.cachedCountdown = this.computeCountdown();
+    this.cachedUrgent = this.computeUrgent();
   }
 
   ngOnDestroy(): void {
@@ -131,7 +145,15 @@ export class TaskCardComponent implements OnChanges, OnDestroy {
   onDueDateChange(dateStr: string): void {
     this.update.emit({
       id: this.task.id,
-      updates: { dueDate: dateStr || undefined },
+      updates: { dueDate: dateStr || undefined, deadlineNotified: false },
+    });
+  }
+
+  /** Atualiza o horário de vencimento */
+  onDueTimeChange(timeStr: string): void {
+    this.update.emit({
+      id: this.task.id,
+      updates: { dueTime: timeStr || undefined, deadlineNotified: false },
     });
   }
 
@@ -155,6 +177,10 @@ export class TaskCardComponent implements OnChanges, OnDestroy {
     this.stopTimer();
     this.timerInterval = setInterval(() => {
       this.timerTick.emit(this.task.id);
+      // Atualiza countdown a cada tick também
+      this.cachedCountdown = this.computeCountdown();
+      this.cachedOverdue = this.computeOverdue();
+      this.cachedUrgent = this.computeUrgent();
       this.cdr.markForCheck(); // força re-check apenas deste card
     }, 1000);
   }
@@ -180,10 +206,52 @@ export class TaskCardComponent implements OnChanges, OnDestroy {
     return n.toString().padStart(2, '0');
   }
 
-  /** Calcula se a data de vencimento já passou (usado no cache) */
+  /** Calcula se o prazo já passou (considerando horário) */
   private computeOverdue(): boolean {
     if (!this.task.dueDate || this.task.completed) return false;
-    return new Date(this.task.dueDate) < new Date();
+    const deadline = buildDeadline(this.task.dueDate, this.task.dueTime);
+    return deadline ? new Date() > deadline : false;
+  }
+
+  /**
+   * Calcula texto de countdown até o prazo.
+   * Ex: "2h 30min restantes", "Expirada há 45min"
+   */
+  private computeCountdown(): string {
+    if (!this.task.dueDate || this.task.completed) return '';
+    const deadline = buildDeadline(this.task.dueDate, this.task.dueTime);
+    if (!deadline) return '';
+
+    const now = new Date();
+    const diffMs = deadline.getTime() - now.getTime();
+    const absDiff = Math.abs(diffMs);
+
+    const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+
+    let timeStr = '';
+    if (days > 0) timeStr += `${days}d `;
+    if (hours > 0) timeStr += `${hours}h `;
+    if (minutes > 0 && days === 0) timeStr += `${minutes}min`;
+    if (!timeStr) timeStr = '< 1min';
+
+    return diffMs > 0
+      ? `${timeStr.trim()} restantes`
+      : `Expirada há ${timeStr.trim()}`;
+  }
+
+  /**
+   * Verifica se a tarefa está em estado de urgência extrema
+   * (menos de 1 hora para o prazo e ainda não expirada/concluída).
+   */
+  private computeUrgent(): boolean {
+    if (!this.task.dueDate || this.task.completed) return false;
+    const deadline = buildDeadline(this.task.dueDate, this.task.dueTime);
+    if (!deadline) return false;
+
+    const diffMs = deadline.getTime() - new Date().getTime();
+    return diffMs > 0 && diffMs < 60 * 60 * 1000; // menos de 1 hora
   }
 
   /** Fecha o menu de tags */
