@@ -22,25 +22,29 @@
       ></textarea>
 
       <!-- Data e horário de vencimento -->
-      <div class="flex flex-wrap items-center gap-2">
-        <svg class="h-4 w-4 shrink-0 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
-        <input
-          type="date"
-          [(ngModel)]="dueDate"
-          class="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none [color-scheme:dark] focus:border-indigo-400/50"
-          title="Data de vencimento"
-        />
-        <svg class="h-4 w-4 shrink-0 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <input
-          type="time"
-          [(ngModel)]="dueTime"
-          class="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none [color-scheme:dark] focus:border-indigo-400/50"
-          title="Horário limite"
-        />
+      <div class="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
+        <div class="col-span-2 flex items-center gap-2 sm:contents">
+          <svg class="hidden h-4 w-4 shrink-0 text-gray-500 sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <input
+            type="date"
+            [(ngModel)]="dueDate"
+            class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none [color-scheme:dark] focus:border-indigo-400/50"
+            title="Data de vencimento"
+          />
+        </div>
+        <div class="col-span-2 flex items-center gap-2 sm:contents">
+          <svg class="hidden h-4 w-4 shrink-0 text-gray-500 sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <input
+            type="time"
+            [(ngModel)]="dueTime"
+            class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none [color-scheme:dark] focus:border-indigo-400/50"
+            title="Horário limite"
+          />
+        </div>
       </div>
 
       <!-- Seleção de tags -->
@@ -67,13 +71,13 @@
         <button
           (click)="onSubmit()"
           [disabled]="!title.trim()"
-          class="rounded-lg bg-indigo-500 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
+          class="min-h-[44px] flex-1 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
         >
           Adicionar
         </button>
         <button
           (click)="onCancel()"
-          class="rounded-lg px-3 py-1.5 text-sm text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+          class="min-h-[44px] flex-1 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:flex-none"
         >
           Cancelar
         </button>

@@ -1,9 +1,9 @@
 <!-- Board principal do kanban -->
-<div class="flex h-screen flex-col">
+<div class="flex h-screen h-dvh flex-col">
 
   <!-- Toast de notificações de deadline -->
   @if (notifications.length > 0) {
-    <div class="fixed right-4 top-4 z-[100] flex w-80 flex-col gap-2">
+    <div class="fixed right-2 top-2 z-[100] flex w-[calc(100vw-1rem)] flex-col gap-2 sm:right-4 sm:top-4 sm:w-80">
       @for (notification of notifications; track notification.id) {
         <div class="animate-slide-in rounded-xl border border-red-500/30 bg-gray-900/95 p-4 shadow-2xl shadow-red-500/10 backdrop-blur-md">
           <div class="flex items-start gap-3">
@@ -36,23 +36,47 @@
   }
 
   <!-- Header do board -->
-  <header class="shrink-0 border-b border-white/10 bg-white/5 px-6 py-4 backdrop-blur-md">
-    <div class="flex flex-wrap items-center gap-4">
+  <header class="shrink-0 border-b border-white/10 bg-white/5 px-3 py-3 backdrop-blur-md sm:px-6 sm:py-4">
+    <div class="flex flex-wrap items-center gap-2 sm:gap-4">
       <!-- Logo / Título -->
       <div class="flex items-center gap-3">
-        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500 shadow-lg shadow-indigo-500/30">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500 shadow-lg shadow-indigo-500/30">
           <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
           </svg>
         </div>
         <div>
           <h1 class="text-lg font-bold text-white">Control-e</h1>
-
         </div>
       </div>
 
+      <!-- Usuário logado e logout (movido para perto do logo em mobile) -->
+      <div class="ml-auto flex items-center gap-2 sm:gap-3">
+        @if (currentUserName) {
+          <div class="flex items-center gap-2">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/30 text-sm font-bold text-indigo-300">
+              {{ currentUserName.charAt(0).toUpperCase() }}
+            </div>
+            <span class="hidden text-sm text-gray-300 sm:inline">{{ currentUserName }}</span>
+          </div>
+        }
+        <button
+          (click)="onLogout()"
+          class="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-sm text-gray-400 transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-400"
+          title="Sair"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          <span class="hidden sm:inline">Sair</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Segunda linha: busca + botão nova coluna -->
+    <div class="mt-2 flex flex-wrap items-center gap-2 sm:mt-0 sm:gap-4">
       <!-- Filtro de busca -->
-      <div class="relative flex-1 sm:max-w-xs">
+      <div class="relative min-w-0 flex-1 sm:max-w-xs">
         <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
         </svg>
@@ -67,24 +91,24 @@
 
       <!-- Botão adicionar coluna -->
       @if (showNewColumnInput) {
-        <div class="flex items-center gap-2">
+        <div class="flex w-full items-center gap-2 sm:w-auto">
           <input
             type="text"
             [(ngModel)]="newColumnName"
             (keydown)="onNewColumnKeydown($event)"
             placeholder="Nome da coluna..."
-            class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-indigo-400/50"
+            class="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-indigo-400/50 sm:flex-none sm:w-44"
             autofocus
           />
           <button
             (click)="addColumn()"
-            class="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
+            class="min-h-[44px] rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
           >
             Criar
           </button>
           <button
             (click)="showNewColumnInput = false"
-            class="rounded-xl px-3 py-2 text-sm text-gray-400 hover:bg-white/10"
+            class="min-h-[44px] rounded-xl px-3 py-2 text-sm text-gray-400 hover:bg-white/10"
           >
             Cancelar
           </button>
@@ -92,7 +116,7 @@
       } @else {
         <button
           (click)="showNewColumnInput = true"
-          class="flex items-center gap-2 rounded-xl border border-dashed border-white/20 px-4 py-2 text-sm text-gray-400 transition-all hover:border-indigo-400/50 hover:bg-white/5 hover:text-white"
+          class="flex min-h-[44px] items-center gap-2 rounded-xl border border-dashed border-white/20 px-4 py-2 text-sm text-gray-400 transition-all hover:border-indigo-400/50 hover:bg-white/5 hover:text-white"
         >
           <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -100,35 +124,14 @@
           Nova coluna
         </button>
       }
-
-      <!-- Usuário logado e logout -->
-      <div class="ml-auto flex items-center gap-3">
-        @if (currentUserName) {
-          <div class="flex items-center gap-2">
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/30 text-sm font-bold text-indigo-300">
-              {{ currentUserName.charAt(0).toUpperCase() }}
-            </div>
-            <span class="hidden text-sm text-gray-300 sm:inline">{{ currentUserName }}</span>
-          </div>
-        }
-        <button
-          (click)="onLogout()"
-          class="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-sm text-gray-400 transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-400"
-          title="Sair"
-        >
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-          </svg>
-          <span class="hidden sm:inline">Sair</span>
-        </button>
-      </div>
     </div>
   </header>
 
   <!-- Área das colunas com scroll horizontal -->
-  <main class="flex flex-1 gap-6 overflow-x-auto p-6">
+  <main class="kanban-scroll flex flex-1 gap-4 overflow-x-auto p-3 pb-safe sm:gap-6 sm:p-6">
     @for (column of filteredColumns; track column.id) {
       <app-column
+        class="kanban-column-snap"
         [column]="column"
         [connectedDropLists]="columnIds"
         (addTask)="onAddTask($event)"
@@ -144,7 +147,7 @@
 
     <!-- Botão de adicionar coluna (alternativo, visível no board) -->
     @if (!showNewColumnInput) {
-      <div class="flex h-fit w-80 shrink-0 items-center justify-center">
+      <div class="kanban-column-snap flex h-fit w-[85vw] shrink-0 items-center justify-center sm:w-80">
         <button
           (click)="showNewColumnInput = true"
           class="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/10 px-6 py-12 text-gray-500 transition-all hover:border-indigo-400/30 hover:bg-white/5 hover:text-gray-300"
